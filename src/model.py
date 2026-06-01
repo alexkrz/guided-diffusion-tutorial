@@ -617,9 +617,12 @@ class Unet(nn.Module):
 
 
 if __name__ == "__main__":
+    from torchinfo import summary
+
     # Test
     model = Unet()
     x = torch.randn(1, 1, 32, 32)
     t = torch.randint(0, 10, (1,))
     y = torch.randint(0, 10, (1,))
-    print(model(x, t, y).shape)
+    # summary(model)
+    print("Unet output shape:", model(x, t, y).shape)
