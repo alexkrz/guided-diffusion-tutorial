@@ -616,13 +616,110 @@ class Unet(nn.Module):
         return out
 
 
+class UnetClassifier(nn.Module):
+    """
+    U-net Classifier architecture; Almost same as Unet
+    architecture except UpC layer.
+    1. will be trained on noisy images obtained
+    by forward diffusion process and labels.
+    2. will be used for classifier guidance
+    during sampling process.
+    """
+
+    def __init__(
+        self,
+        im_channels: int = 1,  # GRAY
+        down_ch: list = [32, 64, 128, 256],
+        mid_ch: list = [256, 256, 128],
+        down_sample: list[bool] = [True, True, False],
+        t_emb_dim: int = 128,
+        num_downc_layers: int = 2,
+        num_midc_layers: int = 2,
+        use_scale_shift_norm: bool = True,
+        num_classes: int = 10,  # MNIST
+    ):
+        super(UnetClassifier, self).__init__()
+
+        self.im_channels = im_channels
+        self.down_ch = down_ch
+        self.mid_ch = mid_ch
+        self.t_emb_dim = t_emb_dim
+        self.down_sample = down_sample
+        self.num_downc_layers = num_downc_layers
+        self.num_midc_layers = num_midc_layers
+        self.use_scale_shift_norm = use_scale_shift_norm
+        self.num_classes = num_classes
+
+        # Initial Convolution
+        self.cv1 = nn.Conv2d(self.im_channels, self.down_ch[0], kernel_size=3, padding=1)
+
+        # Initial Time Embedding Projection
+        self.t_proj = nn.Sequential(
+            nn.Linear(self.t_emb_dim, self.t_emb_dim), nn.SiLU(), nn.Linear(self.t_emb_dim, self.t_emb_dim)
+        )
+
+        # DownC Blocks
+        self.downs = nn.ModuleList(
+            [
+                DownC(
+                    self.down_ch[i],
+                    self.down_ch[i + 1],
+                    self.t_emb_dim,
+                    self.num_downc_layers,
+                    self.down_sample[i],
+                    self.use_scale_shift_norm,
+                )
+                for i in range(len(self.down_ch) - 1)
+            ]
+        )
+
+        # MidC Block
+        self.mids = nn.ModuleList(
+            [
+                MidC(
+                    self.mid_ch[i], self.mid_ch[i + 1], self.t_emb_dim, self.num_midc_layers, self.use_scale_shift_norm
+                )
+                for i in range(len(self.mid_ch) - 1)
+            ]
+        )
+
+        # Out
+        self.head = nn.Sequential(
+            nn.AdaptiveAvgPool2d((1, 1)), nn.Flatten(), nn.Linear(self.mid_ch[-1], self.num_classes)
+        )
+
+    def forward(self, x, t):
+
+        out = self.cv1(x)
+
+        # Time Projection
+        t_emb = get_time_embedding(t, self.t_emb_dim)
+        t_emb = self.t_proj(t_emb)
+
+        for down in self.downs:
+            out = down(out, t_emb)
+
+        # MidC outputs
+        for mid in self.mids:
+            out = mid(out, t_emb)
+
+        return self.head(out)
+
+
 if __name__ == "__main__":
     from torchinfo import summary
 
-    # Test
+    # Unet
     model = Unet()
     x = torch.randn(1, 1, 32, 32)
     t = torch.randint(0, 10, (1,))
     y = torch.randint(0, 10, (1,))
     # summary(model)
     print("Unet output shape:", model(x, t, y).shape)
+
+    # Classifier
+    model = UnetClassifier()
+    x = torch.randn(4, 1, 32, 32)
+    t = torch.randint(0, 10, (4,))
+    # summary(model)
+    print("Classifier output shape:", model(x, t).shape)
