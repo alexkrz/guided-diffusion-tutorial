@@ -1,48 +1,18 @@
-# %%
-# Imports
 import gc
-from dataclasses import dataclass
 
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from src.config import Config
 from src.dataset import CustomMnistDataset
-from src.model import UnetClassifier
+from src.model import Unet, UnetClassifier
 from src.scheduler import GuidedDiffusionProcess
 
 
-# %%
-# Config
-@dataclass
-class CONFIG:
-    # Save and Load Paths
-    train_csv_path = "data/train.csv"
-    test_csv_path = "data/test.csv"
-    model_path = "checkpoints/openai_unet.pth"
-    classifier_path = "results/openai_unet_classifier.pth"
-    generated_csv_path = "results/mnist_generated_data.csv"
-
-    # Training Hyperparams
-    num_epochs = 50
-    lr = 1e-4
-    num_diffusion_timesteps = 1000
-    batch_size = 128
-    img_size = 28
-    in_channels = 1
-    num_classes = 10
-
-    # Sampling Hyperparams
-    num_img_to_generate = 256
-    num_sampling_timesteps = 1000
-    classifier_guidance = False
-    classifier_scale = 1.0
-
-
-# %%
-# Train classifier
-def train_classifier(cfg: CONFIG):
+def train_classifier(cfg: Config):
 
     # Dataset and Dataloader
     mnist_ds = CustomMnistDataset(cfg.train_csv_path)
@@ -50,7 +20,7 @@ def train_classifier(cfg: CONFIG):
 
     # Device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Device: {device}\n")
+    print(f"Device: {device}")
 
     # Initiate Model
     model = UnetClassifier().to(device)
@@ -60,7 +30,8 @@ def train_classifier(cfg: CONFIG):
 
     # Initialize Diffusion Process
     diffusion_process = GuidedDiffusionProcess(
-        num_timesteps=cfg.num_diffusion_timesteps, num_sampling_timesteps=cfg.num_diffusion_timesteps
+        num_timesteps=cfg.num_diffusion_timesteps,
+        num_sampling_timesteps=cfg.num_diffusion_timesteps,
     )
 
     criterion = nn.CrossEntropyLoss()
@@ -68,7 +39,7 @@ def train_classifier(cfg: CONFIG):
     # Best Loss
     best_eval_loss = float("inf")
 
-    print("\n----------------------------------")
+    print("----------------------------------")
     print(f"\033[93mEpoch  Train-Loss   Accuracy\033[0m")
     print("----------------------------------")
 
@@ -116,7 +87,7 @@ def train_classifier(cfg: CONFIG):
         accuracy = correct / total
 
         # Display
-        print(f"{epoch + 1:<6} {train_loss:<10.4f}  {accuracy:<10.4f}", end="   ")
+        print(f"{epoch + 1:<6} {train_loss:<10.4f}  {accuracy:<10.4f}")
 
         # Save based on train-loss
         if train_loss < best_eval_loss:
@@ -131,10 +102,99 @@ def train_classifier(cfg: CONFIG):
     torch.cuda.empty_cache()
 
 
-# Config
-cfg = CONFIG()
+def train(cfg: Config):
 
-# TRAIN
-train_classifier(cfg)
+    # Dataset and Dataloader
+    mnist_ds = CustomMnistDataset(cfg.train_csv_path)
+    mnist_dl = DataLoader(mnist_ds, cfg.batch_size, shuffle=True)
 
-# %%
+    # Device
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Device: {device}")
+
+    # Initiate Model
+    model = Unet().to(device)
+
+    # Initialize Optimizer and Loss Function
+    optimizer = torch.optim.Adam(model.parameters(), lr=cfg.lr)
+
+    # Initialize Diffusion Process
+    diffusion_process = GuidedDiffusionProcess(
+        num_timesteps=cfg.num_diffusion_timesteps, num_sampling_timesteps=cfg.num_diffusion_timesteps
+    )
+
+    # Best Loss
+    best_eval_loss = float("inf")
+
+    print("--------------------------------------------")
+    print(f"\033[93mEpoch  MSE-Loss   VLB-Loss   Total-Loss\033[0m")
+    print("--------------------------------------------")
+
+    # Train
+    for epoch in range(cfg.num_epochs):
+        # For Loss Tracking
+        losses = []
+        losses_mse = []
+        losses_vlb = []
+
+        # Set model to train mode
+        model.train()
+
+        # Loop over dataloader
+        for imgs, labels in tqdm(mnist_dl):
+            imgs = imgs.to(device)
+            labels = labels.to(device)
+
+            # Generate noise and timestamps
+            noise = torch.randn_like(imgs).to(device)
+            t = torch.randint(0, cfg.num_diffusion_timesteps, (imgs.shape[0],)).to(device)
+
+            # Avoid Gradient Accumulation
+            optimizer.zero_grad()
+
+            # Calculate training loss
+            loss_dict = diffusion_process.training_losses(model, imgs, t, noise, labels)
+            loss_mse = loss_dict["mse_loss"].mean()
+            loss_vlb = loss_dict["vlb_loss"].mean()
+            loss = loss_mse + loss_vlb
+
+            losses.append(loss.item())
+            losses_mse.append(loss_mse.item())
+            losses_vlb.append(loss_vlb.item())
+
+            # Backprop + Update model params
+            loss.backward()
+            optimizer.step()
+
+        # Mean Losses
+        mean_mse_loss = np.mean(losses_mse)
+        mean_vlb_loss = np.mean(losses_vlb)
+        mean_total_loss = np.mean(losses)
+
+        # Display
+        print(f"{epoch + 1:<6} {mean_mse_loss:<10.4f}  {mean_vlb_loss:<10.4f} {mean_total_loss:<8.4f}")
+
+        # Save based on train-loss
+        if mean_total_loss < best_eval_loss:
+            best_eval_loss = mean_total_loss
+            torch.save(model, cfg.model_path)
+
+    print("--------------------------------------------")
+
+    # Memory Management
+    del model, imgs, labels, diffusion_process
+    gc.collect()
+    torch.cuda.empty_cache()
+
+
+if __name__ == "__main__":
+    # Load config
+    cfg = Config()
+
+    # Train the classifier
+    print("Training the classifier:")
+    train_classifier(cfg)
+
+    # Train diffusion model
+    print("Training the diffusion model:")
+    train(cfg)
