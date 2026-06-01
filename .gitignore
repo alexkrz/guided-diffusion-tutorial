@@ -3,3 +3,8 @@
 
 # Artifacts
 __pycache__/
+
+# Directories
+/checkpoints/
+/data/
+/results/

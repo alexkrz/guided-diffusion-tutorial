@@ -18,11 +18,11 @@ from src.scheduler import GuidedDiffusionProcess
 @dataclass
 class CONFIG:
     # Save and Load Paths
-    train_csv_path = "/kaggle/input/digit-recognizer/train.csv"
-    test_csv_path = "/kaggle/input/digit-recognizer/test.csv"
-    model_path = "/kaggle/input/diffusion-models/openai_unet.pth"
-    classifier_path = "openai_unet_classifier.pth"
-    generated_csv_path = "mnist_generated_data.csv"
+    train_csv_path = "data/train.csv"
+    test_csv_path = "data/test.csv"
+    model_path = "checkpoints/openai_unet.pth"
+    classifier_path = "results/openai_unet_classifier.pth"
+    generated_csv_path = "results/mnist_generated_data.csv"
 
     # Training Hyperparams
     num_epochs = 50
@@ -136,3 +136,5 @@ cfg = CONFIG()
 
 # TRAIN
 train_classifier(cfg)
+
+# %%
