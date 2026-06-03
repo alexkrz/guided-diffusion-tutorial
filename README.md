@@ -37,5 +37,4 @@ Generated images will be stored in the `results/` directory.
 
 ## Todos
 
-- [ ] Add DDIM scheduler
-- [ ] Train model on FFHQ-256 images
+- [ ] Reproduce results from Karras et al., 2022, p. 14
