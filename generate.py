@@ -1,5 +1,3 @@
-# %%
-# Imports and function definitions
 import gc
 
 import matplotlib.pyplot as plt
@@ -85,6 +83,7 @@ def run_generate(steps: int = 1000, guidance: bool = False):
     cfg.classifier_guidance = guidance
 
     # Generate
+    print(f"Generating 25 images with steps: {steps} and guidance: {guidance}")
     generated_imgs = []
     cond_labels = []
     for i in range(25):
@@ -103,15 +102,14 @@ def run_generate(steps: int = 1000, guidance: bool = False):
         ax.set_title(f"Cond-Label: {cond_labels[i]}")
         ax.axis("off")  # Turn off axis labels
 
-    plt.tight_layout()  # Adjust spacing between subplots
-    plt.show()  # TODO: Save plots in results directory
+    fig.tight_layout()  # Adjust spacing between subplots
+    fig.savefig(f"results/mnist_step-{steps}-guidance-{guidance}.png")
+    # plt.show()
 
 
-# %%
-# Generate and plot results
-run_generate(1000, guidance=False)
-run_generate(250, guidance=False)
-# run_generate(1000, guidance=True)
-# run_generate(250, guidance=True)
-
-# %%
+if __name__ == "__main__":
+    # Generate and plot results
+    run_generate(1000, guidance=False)
+    run_generate(250, guidance=False)
+    run_generate(1000, guidance=True)
+    run_generate(250, guidance=True)

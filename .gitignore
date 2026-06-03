@@ -7,4 +7,6 @@ __pycache__/
 # Directories
 /checkpoints/
 /data/
-/results/
+/logs/
+/results/*
+!/results/*.png

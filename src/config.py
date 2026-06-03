@@ -6,8 +6,8 @@ class Config:
     # Save and Load Paths
     train_csv_path = "data/train.csv"
     test_csv_path = "data/test.csv"
-    model_path = "results/openai_unet.pth"
-    classifier_path = "results/openai_unet_classifier.pth"
+    model_path = "logs/openai_unet.pth"
+    classifier_path = "logs/openai_unet_classifier.pth"
     generated_csv_path = "results/mnist_generated_data.csv"
 
     # Training Hyperparams
