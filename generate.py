@@ -5,11 +5,12 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from src.config import Config
+from src.config import ConfigImageNet, ConfigMNIST
+from src.model_v2 import UNetModel
 from src.scheduler import GuidedDiffusionProcess
 
 
-def generate(cfg: Config, y):
+def generate(cfg: ConfigImageNet, y):
     """
     Given Pretrained U-net model and label y, Generate Real-life
     Images conditioned on label y from noise by going backward step by step. i.e.,
@@ -40,11 +41,33 @@ def generate(cfg: Config, y):
         classifier.eval()
 
     # Set model to eval mode
-    model = torch.load(
+    weights = torch.load(
         cfg.model_path,
         map_location="cpu",
-        weights_only=False,  # Training script currently saves full module checkpoints
-    ).to(device)
+        weights_only=True,  # Training script currently saves full module checkpoints
+    )
+    print("Number of weights.keys():", len(weights.keys()))
+    model = UNetModel(
+        image_size=64,
+        in_channels=3,
+        model_channels=192,
+        out_channels=6,
+        num_res_blocks=3,
+        attention_resolutions=(2, 4, 8),
+        dropout=0.0,
+        channel_mult=(1, 2, 3, 4),
+        num_classes=1000,
+        use_checkpoint=False,
+        use_fp16=False,
+        num_heads=4,
+        num_head_channels=64,
+        num_heads_upsample=-1,
+        use_scale_shift_norm=True,
+        resblock_updown=True,
+        use_new_attention_order=False,
+    )
+    model.load_state_dict(state_dict=weights)
+    model.to(device)
     model.eval()
 
     # Generate Noise sample from N(0, 1)
@@ -78,7 +101,7 @@ def generate(cfg: Config, y):
 
 
 def run_generate(steps: int = 1000, guidance: bool = False):
-    cfg = Config()
+    cfg = ConfigImageNet()
     cfg.num_sampling_timesteps = steps
     cfg.classifier_guidance = guidance
 
@@ -86,7 +109,7 @@ def run_generate(steps: int = 1000, guidance: bool = False):
     print(f"Generating 25 images with steps: {steps} and guidance: {guidance}")
     generated_imgs = []
     cond_labels = []
-    for i in range(25):
+    for i in range(25):  # TODO: Add option for batched inference
         y = np.random.randint(0, 10)  # Randomly select a label bw 1 to 10.
         xt = generate(cfg, y)
         generated_imgs.append(xt)
@@ -110,6 +133,6 @@ def run_generate(steps: int = 1000, guidance: bool = False):
 if __name__ == "__main__":
     # Generate and plot results
     run_generate(1000, guidance=False)
-    run_generate(250, guidance=False)
-    run_generate(1000, guidance=True)
-    run_generate(250, guidance=True)
+    # run_generate(250, guidance=False)
+    # run_generate(1000, guidance=True)
+    # run_generate(250, guidance=True)

@@ -6,13 +6,13 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from src.config import Config
+from src.config import ConfigMNIST
 from src.dataset import CustomMnistDataset
-from src.model import Unet, UnetClassifier
+from src.model_v1 import Unet, UnetClassifier
 from src.scheduler import GuidedDiffusionProcess
 
 
-def train_classifier(cfg: Config):
+def train_classifier(cfg: ConfigMNIST):
 
     # Dataset and Dataloader
     mnist_ds = CustomMnistDataset(cfg.train_csv_path)
@@ -102,7 +102,7 @@ def train_classifier(cfg: Config):
     torch.cuda.empty_cache()
 
 
-def train(cfg: Config):
+def train(cfg: ConfigMNIST):
 
     # Dataset and Dataloader
     mnist_ds = CustomMnistDataset(cfg.train_csv_path)
@@ -189,7 +189,7 @@ def train(cfg: Config):
 
 if __name__ == "__main__":
     # Load config
-    cfg = Config()
+    cfg = ConfigMNIST()
 
     # Train the classifier
     print("Training the classifier:")
