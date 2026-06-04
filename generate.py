@@ -70,7 +70,7 @@ def generate(cfg: ConfigImageNet, y):
         out_channels=6,
         num_res_blocks=3,
         attention_resolutions=(2, 4, 8),
-        dropout=0.0,
+        dropout=0.1,
         channel_mult=(1, 2, 3, 4),
         num_classes=1000,
         use_checkpoint=False,
@@ -80,7 +80,7 @@ def generate(cfg: ConfigImageNet, y):
         num_heads_upsample=-1,
         use_scale_shift_norm=True,
         resblock_updown=True,
-        use_new_attention_order=False,
+        use_new_attention_order=True,
     )
     model.load_state_dict(state_dict=weights)
     model.to(device)
@@ -180,7 +180,7 @@ def run_generate(steps: int = 1000, guidance: bool = False):
 
 if __name__ == "__main__":
     # Generate and plot results
-    run_generate(1000, guidance=True)
+    run_generate(1000, guidance=False)
     # run_generate(250, guidance=False)
     # run_generate(1000, guidance=True)
     # run_generate(250, guidance=True)
