@@ -41,8 +41,8 @@ class ConfigImageNet:
     num_diffusion_timesteps = 1000
     batch_size = 128
     img_size = 64
-    in_channels = 1
-    num_classes = 10
+    in_channels = 3
+    num_classes = 1000
 
     # Sampling Hyperparams
     num_img_to_generate = 256

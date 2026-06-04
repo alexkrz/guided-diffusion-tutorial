@@ -46,7 +46,7 @@ def generate(cfg: ConfigImageNet, y):
         map_location="cpu",
         weights_only=True,  # Training script currently saves full module checkpoints
     )
-    print("Number of weights.keys():", len(weights.keys()))
+    # print("Number of weights.keys():", len(weights.keys()))
     model = UNetModel(
         image_size=64,
         in_channels=3,
@@ -73,6 +73,9 @@ def generate(cfg: ConfigImageNet, y):
     # Generate Noise sample from N(0, 1)
     xt = torch.randn(1, cfg.in_channels, cfg.img_size, cfg.img_size).to(device)
 
+    # Labels for class-conditional generation are expected as a 1-D [batch] tensor.
+    y = torch.as_tensor(y, device=device, dtype=torch.long).view(-1)
+
     # Denoise step by step by going backward.
     num_sampling_timesteps = len(diffusion_process.use_timesteps)
     with torch.no_grad():
@@ -81,7 +84,7 @@ def generate(cfg: ConfigImageNet, y):
                 model,
                 xt,
                 torch.as_tensor(t).unsqueeze(0).to(device),
-                torch.as_tensor(y).to(device),
+                y,
                 classifier,
             )["sample"]
 
@@ -90,7 +93,10 @@ def generate(cfg: ConfigImageNet, y):
     xt = (xt + 1) / 2
 
     # Convert to uint8
-    xt = 255 * xt[0][0].numpy()
+    if xt.shape[1] == 1:
+        xt = 255 * xt[0][0].numpy()
+    else:
+        xt = 255 * xt[0].permute(1, 2, 0).numpy()
 
     # Memory Management
     del model, diffusion_process
@@ -110,7 +116,7 @@ def run_generate(steps: int = 1000, guidance: bool = False):
     generated_imgs = []
     cond_labels = []
     for i in range(25):  # TODO: Add option for batched inference
-        y = np.random.randint(0, 10)  # Randomly select a label bw 1 to 10.
+        y = np.random.randint(0, cfg.num_classes)
         xt = generate(cfg, y)
         generated_imgs.append(xt)
         cond_labels.append(y)
@@ -121,18 +127,21 @@ def run_generate(steps: int = 1000, guidance: bool = False):
 
     # Plot each image in the corresponding subplot
     for i, ax in enumerate(axes):
-        ax.imshow(generated_imgs[i], cmap="gray")  # You might need to adjust the colormap based on your images
+        if generated_imgs[i].ndim == 2:
+            ax.imshow(generated_imgs[i], cmap="gray")
+        else:
+            ax.imshow(generated_imgs[i])
         ax.set_title(f"Cond-Label: {cond_labels[i]}")
         ax.axis("off")  # Turn off axis labels
 
     fig.tight_layout()  # Adjust spacing between subplots
-    fig.savefig(f"results/mnist_step-{steps}-guidance-{guidance}.png")
+    fig.savefig(f"results/imagenet_step-{steps}-guidance-{guidance}.png")
     # plt.show()
 
 
 if __name__ == "__main__":
     # Generate and plot results
-    run_generate(1000, guidance=False)
+    run_generate(250, guidance=False)
     # run_generate(250, guidance=False)
     # run_generate(1000, guidance=True)
     # run_generate(250, guidance=True)
