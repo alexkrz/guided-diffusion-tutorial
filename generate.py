@@ -6,7 +6,7 @@ import torch
 from tqdm import tqdm
 
 from src.config import ConfigImageNet, ConfigMNIST
-from src.model_v2 import UNetModel
+from src.model_v2 import UNetModel, EncoderUNetModel
 from src.scheduler import GuidedDiffusionProcess
 
 
@@ -33,14 +33,30 @@ def generate(cfg: ConfigImageNet, y):
     classifier = None
     if cfg.classifier_guidance:
         # Load Classifier Model
-        classifier = torch.load(
+        weights = torch.load(
             cfg.classifier_path,
             map_location="cpu",
-            weights_only=False,
-        ).to(device)
+            weights_only=True,
+        )
+        classifier = EncoderUNetModel(
+            image_size=64,
+            in_channels=3,
+            model_channels=128,
+            out_channels=1000,
+            num_res_blocks=4,
+            attention_resolutions=(2, 4, 8),
+            channel_mult=(1, 2, 3, 4),
+            use_fp16=False,
+            num_head_channels=64,
+            use_scale_shift_norm=True,
+            resblock_updown=True,
+            pool="attention",
+        )
+        classifier.load_state_dict(state_dict=weights)
+        classifier.to(device)
         classifier.eval()
 
-    # Set model to eval mode
+    # Load UNet Model
     weights = torch.load(
         cfg.model_path,
         map_location="cpu",
@@ -164,7 +180,7 @@ def run_generate(steps: int = 1000, guidance: bool = False):
 
 if __name__ == "__main__":
     # Generate and plot results
-    run_generate(1000, guidance=False)
+    run_generate(1000, guidance=True)
     # run_generate(250, guidance=False)
     # run_generate(1000, guidance=True)
     # run_generate(250, guidance=True)
