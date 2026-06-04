@@ -70,20 +70,23 @@ def generate(cfg: ConfigImageNet, y):
     model.to(device)
     model.eval()
 
-    # Generate Noise sample from N(0, 1)
-    xt = torch.randn(1, cfg.in_channels, cfg.img_size, cfg.img_size).to(device)
-
     # Labels for class-conditional generation are expected as a 1-D [batch] tensor.
+    return_single = np.asarray(y).ndim == 0
     y = torch.as_tensor(y, device=device, dtype=torch.long).view(-1)
+    batch_size = y.shape[0]
+
+    # Generate Noise sample from N(0, 1)
+    xt = torch.randn(batch_size, cfg.in_channels, cfg.img_size, cfg.img_size).to(device)
 
     # Denoise step by step by going backward.
     num_sampling_timesteps = len(diffusion_process.use_timesteps)
     with torch.no_grad():
         for t in tqdm(reversed(range(num_sampling_timesteps))):
+            timestep_batch = torch.full((batch_size,), t, device=device, dtype=torch.long)
             xt = diffusion_process.p_sample(
                 model,
                 xt,
-                torch.as_tensor(t).unsqueeze(0).to(device),
+                timestep_batch,
                 y,
                 classifier,
             )["sample"]
@@ -94,16 +97,19 @@ def generate(cfg: ConfigImageNet, y):
 
     # Convert to uint8
     if xt.shape[1] == 1:
-        xt = 255 * xt[0][0].numpy()
+        xt = 255 * xt[:, 0].numpy()  # (B, H, W)
     else:
-        xt = 255 * xt[0].permute(1, 2, 0).numpy()
+        xt = 255 * xt.permute(0, 2, 3, 1).numpy()  # (B, H, W, C)
 
     # Memory Management
     del model, diffusion_process
     gc.collect()
     torch.cuda.empty_cache()
 
-    return xt.astype(np.uint8)
+    xt = xt.astype(np.uint8)
+    if return_single:
+        return xt[0]
+    return xt
 
 
 def run_generate(steps: int = 1000, guidance: bool = False):
@@ -112,36 +118,53 @@ def run_generate(steps: int = 1000, guidance: bool = False):
     cfg.classifier_guidance = guidance
 
     # Generate
-    print(f"Generating 25 images with steps: {steps} and guidance: {guidance}")
-    generated_imgs = []
-    cond_labels = []
-    for i in range(25):  # TODO: Add option for batched inference
-        y = np.random.randint(0, cfg.num_classes)
-        xt = generate(cfg, y)
-        generated_imgs.append(xt)
-        cond_labels.append(y)
+    batch_size = 4
+    num_rows = 1
+    print(
+        f"Generating {num_rows} label-batches x {batch_size} images with steps: {steps} and guidance: {guidance}"
+    )
+    row_batches = []
+    row_labels = []
+    for _ in range(num_rows):
+        label = np.random.randint(0, cfg.num_classes)
+        y = np.full((batch_size,), label, dtype=np.int64)
+        xt_batch = generate(cfg, y)
+        row_batches.append(xt_batch)
+        row_labels.append(label)
 
     # Visualize
-    fig, axes = plt.subplots(5, 5, figsize=(6, 6))
-    axes: list[plt.Axes] = np.ravel(axes)
+    fig, axes = plt.subplots(num_rows, batch_size, figsize=(6, 1.5 * num_rows), squeeze=False)
 
-    # Plot each image in the corresponding subplot
-    for i, ax in enumerate(axes):
-        if generated_imgs[i].ndim == 2:
-            ax.imshow(generated_imgs[i], cmap="gray")
-        else:
-            ax.imshow(generated_imgs[i])
-        ax.set_title(f"Cond-Label: {cond_labels[i]}")
-        ax.axis("off")  # Turn off axis labels
+    # Plot each batch in a row; show the conditioning label only on the far-left axis.
+    for row_idx in range(num_rows):
+        for col_idx in range(batch_size):
+            ax = axes[row_idx, col_idx]
+            img = row_batches[row_idx][col_idx]
+            if img.ndim == 2:
+                ax.imshow(img, cmap="gray")
+            else:
+                ax.imshow(img)
+            ax.set_xticks([])
+            ax.set_yticks([])
+            for spine in ax.spines.values():
+                spine.set_visible(False)
 
-    fig.tight_layout()  # Adjust spacing between subplots
+        axes[row_idx, 0].set_ylabel(
+            f"Label: {row_labels[row_idx]}",
+            # rotation=90,
+            # labelpad=42,
+            # va="center",
+            # ha="right",
+        )
+
+    fig.tight_layout()  # Reserve left margin for row labels.
     fig.savefig(f"results/imagenet_step-{steps}-guidance-{guidance}.png")
     # plt.show()
 
 
 if __name__ == "__main__":
     # Generate and plot results
-    run_generate(250, guidance=False)
+    run_generate(1000, guidance=False)
     # run_generate(250, guidance=False)
     # run_generate(1000, guidance=True)
     # run_generate(250, guidance=True)
