@@ -1,8 +1,8 @@
 # The UNet implementation here is from https://github.com/openai/guided-diffusion/blob/main/guided_diffusion/unet.py
 
+import json
 import math
 from abc import abstractmethod
-import json
 from pathlib import Path
 
 import numpy as np

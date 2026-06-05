@@ -1,3 +1,6 @@
+# This code is from https://www.kaggle.com/code/vikramsandu/guided-diffusion-by-openai-from-scratch/notebook
+# It is an adapted and simplified version from https://github.com/openai/guided-diffusion/blob/main/guided_diffusion/gaussian_diffusion.py
+
 import math
 
 import numpy as np

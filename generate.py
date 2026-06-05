@@ -6,11 +6,12 @@ import torch
 from tqdm import tqdm
 
 from src.config import ConfigImageNet, ConfigMNIST
-from src.model_openai import UNetModel, EncoderUNetModel
+from src.model_openai import EncoderUNetModel, UNetModel
+from src.model_tutorial import Unet, UnetClassifier
 from src.scheduler import GuidedDiffusionProcess
 
 
-def generate(cfg: ConfigImageNet, y):
+def generate(cfg, y):
     """
     Given Pretrained U-net model and label y, Generate Real-life
     Images conditioned on label y from noise by going backward step by step. i.e.,
@@ -33,25 +34,32 @@ def generate(cfg: ConfigImageNet, y):
     classifier = None
     if cfg.classifier_guidance:
         # Load Classifier Model
-        weights = torch.load(
-            cfg.classifier_path,
-            map_location="cpu",
-            weights_only=True,
-        )
-        classifier = EncoderUNetModel.from_config(cfg.classifier_config_path)
-        classifier.load_state_dict(state_dict=weights)
+        if cfg.name == "openai":
+            weights = torch.load(cfg.classifier_path, map_location="cpu", weights_only=True)
+            classifier = EncoderUNetModel.from_config(cfg.classifier_config_path)
+            classifier.load_state_dict(state_dict=weights)
+        elif cfg.name == "tutorial":
+            weights = torch.load(cfg.classifier_path, map_location="cpu", weights_only=True)
+            model = UnetClassifier()
+            model.load_state_dict(state_dict=weights)
+        else:
+            raise NotImplementedError()
         classifier.to(device)
         classifier.eval()
 
     # Load UNet Model
-    weights = torch.load(
-        cfg.model_path,
-        map_location="cpu",
-        weights_only=True,  # Training script currently saves full module checkpoints
-    )
-    # print("Number of weights.keys():", len(weights.keys()))
-    model = UNetModel.from_config(cfg.model_config_path)
-    model.load_state_dict(state_dict=weights)
+    if cfg.name == "openai":
+        weights = torch.load(cfg.model_path, map_location="cpu", weights_only=True)
+        # print("Number of weights.keys():", len(weights.keys()))
+        model = UNetModel.from_config(cfg.model_config_path)
+        model.load_state_dict(state_dict=weights)
+    elif cfg.name == "tutorial":
+        # Training script previously saved full module checkpoints
+        weights = torch.load(cfg.model_path, map_location="cpu", weights_only=True)
+        model = Unet()
+        model.load_state_dict(state_dict=weights)
+    else:
+        raise NotImplementedError()
     model.to(device)
     model.eval()
 
@@ -97,17 +105,14 @@ def generate(cfg: ConfigImageNet, y):
     return xt
 
 
-def run_generate(steps: int = 1000, guidance: bool = False):
-    cfg = ConfigImageNet()
+def run_generate(cfg, steps: int = 1000, guidance: bool = False):
     cfg.num_sampling_timesteps = steps
     cfg.classifier_guidance = guidance
 
     # Generate
     batch_size = 4
     num_rows = 1
-    print(
-        f"Generating {num_rows} label-batches x {batch_size} images with steps: {steps} and guidance: {guidance}"
-    )
+    print(f"Generating {num_rows} label-batches x {batch_size} images with steps: {steps} and guidance: {guidance}")
     row_batches = []
     row_labels = []
     for _ in range(num_rows):
@@ -143,13 +148,14 @@ def run_generate(steps: int = 1000, guidance: bool = False):
         )
 
     fig.tight_layout()  # Reserve left margin for row labels.
-    fig.savefig(f"results/imagenet_step-{steps}-guidance-{guidance}.png")
+    fig.savefig(f"results/{cfg.name}_step-{steps}-guidance-{guidance}.png")
     # plt.show()
 
 
 if __name__ == "__main__":
+    cfg = ConfigMNIST()
     # Generate and plot results
-    run_generate(1000, guidance=False)
+    run_generate(cfg, steps=1000, guidance=False)
     # run_generate(250, guidance=False)
     # run_generate(1000, guidance=True)
     # run_generate(250, guidance=True)

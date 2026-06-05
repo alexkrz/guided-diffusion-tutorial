@@ -92,7 +92,7 @@ def train_classifier(cfg: ConfigMNIST):
         # Save based on train-loss
         if train_loss < best_eval_loss:
             best_eval_loss = train_loss
-            torch.save(model, cfg.classifier_path)
+            torch.save(model.state_dict(), cfg.classifier_path)
 
     print("----------------------------------")
 
@@ -177,7 +177,7 @@ def train(cfg: ConfigMNIST):
         # Save based on train-loss
         if mean_total_loss < best_eval_loss:
             best_eval_loss = mean_total_loss
-            torch.save(model, cfg.model_path)
+            torch.save(model.state_dict(), cfg.model_path)
 
     print("--------------------------------------------")
 

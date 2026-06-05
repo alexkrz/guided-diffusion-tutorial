@@ -4,10 +4,11 @@ from dataclasses import dataclass
 @dataclass
 class ConfigMNIST:
     # Save and Load Paths
+    name = "tutorial"
     train_csv_path = "data/train.csv"
     test_csv_path = "data/test.csv"
-    model_path = "checkpoints/tutorial-mnist-28/openai_unet.pth"
-    classifier_path = "checkpoints/tutorial-mnist-28/openai_unet_classifier.pth"
+    model_path = "logs/openai_unet.pt"
+    classifier_path = "logs/openai_unet_classifier.pt"
     generated_csv_path = "results/mnist_generated_data.csv"
 
     # Training Hyperparams
@@ -29,6 +30,7 @@ class ConfigMNIST:
 @dataclass
 class ConfigImageNet:
     # Save and Load Paths
+    name = "openai"
     train_csv_path = "data/train.csv"
     test_csv_path = "data/test.csv"
     model_path = "checkpoints/openai-imagenet-64/64x64_diffusion.pt"
