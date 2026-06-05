@@ -38,20 +38,7 @@ def generate(cfg: ConfigImageNet, y):
             map_location="cpu",
             weights_only=True,
         )
-        classifier = EncoderUNetModel(
-            image_size=64,
-            in_channels=3,
-            model_channels=128,
-            out_channels=1000,
-            num_res_blocks=4,
-            attention_resolutions=(2, 4, 8),
-            channel_mult=(1, 2, 3, 4),
-            use_fp16=False,
-            num_head_channels=64,
-            use_scale_shift_norm=True,
-            resblock_updown=True,
-            pool="attention",
-        )
+        classifier = EncoderUNetModel.from_config(cfg.classifier_config_path)
         classifier.load_state_dict(state_dict=weights)
         classifier.to(device)
         classifier.eval()
@@ -63,25 +50,7 @@ def generate(cfg: ConfigImageNet, y):
         weights_only=True,  # Training script currently saves full module checkpoints
     )
     # print("Number of weights.keys():", len(weights.keys()))
-    model = UNetModel(
-        image_size=64,
-        in_channels=3,
-        model_channels=192,
-        out_channels=6,
-        num_res_blocks=3,
-        attention_resolutions=(2, 4, 8),
-        dropout=0.1,
-        channel_mult=(1, 2, 3, 4),
-        num_classes=1000,
-        use_checkpoint=False,
-        use_fp16=False,
-        num_heads=4,
-        num_head_channels=64,
-        num_heads_upsample=-1,
-        use_scale_shift_norm=True,
-        resblock_updown=True,
-        use_new_attention_order=True,
-    )
+    model = UNetModel.from_config(cfg.model_config_path)
     model.load_state_dict(state_dict=weights)
     model.to(device)
     model.eval()

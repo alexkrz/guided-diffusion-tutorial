@@ -1,5 +1,7 @@
 import math
 from abc import abstractmethod
+import json
+from pathlib import Path
 
 import numpy as np
 import torch as th
@@ -596,6 +598,17 @@ class UNetModel(nn.Module):
             zero_module(conv_nd(dims, input_ch, out_channels, 3, padding=1)),
         )
 
+    @classmethod
+    def from_config(cls, config_path):
+        with Path(config_path).open("r", encoding="utf-8") as f:
+            config = json.load(f)
+
+        for field in ("attention_resolutions", "channel_mult"):
+            if isinstance(config.get(field), list):
+                config[field] = tuple(config[field])
+
+        return cls(**config)
+
     def forward(self, x, timesteps, y=None):
         """
         Apply the model to an input batch.
@@ -812,6 +825,17 @@ class EncoderUNetModel(nn.Module):
             )
         else:
             raise NotImplementedError(f"Unexpected {pool} pooling")
+
+    @classmethod
+    def from_config(cls, config_path):
+        with Path(config_path).open("r", encoding="utf-8") as f:
+            config = json.load(f)
+
+        for field in ("attention_resolutions", "channel_mult"):
+            if isinstance(config.get(field), list):
+                config[field] = tuple(config[field])
+
+        return cls(**config)
 
     def forward(self, x, timesteps):
         """

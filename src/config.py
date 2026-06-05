@@ -31,8 +31,10 @@ class ConfigImageNet:
     # Save and Load Paths
     train_csv_path = "data/train.csv"
     test_csv_path = "data/test.csv"
-    model_path = "checkpoints/64x64_diffusion.pt"
-    classifier_path = "checkpoints/64x64_classifier.pt"
+    model_path = "checkpoints/ddpm-imagenet-64/64x64_diffusion.pt"
+    classifier_path = "checkpoints/ddpm-imagenet-64/64x64_classifier.pt"
+    model_config_path = "checkpoints/ddpm-imagenet-64/unet_model.json"
+    classifier_config_path = "checkpoints/ddpm-imagenet-64/encoder_unet_model.json"
     generated_csv_path = "results/mnist_generated_data.csv"
 
     # Training Hyperparams
