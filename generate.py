@@ -76,12 +76,13 @@ def generate(cfg, y):
     with torch.no_grad():
         for t in tqdm(reversed(range(num_sampling_timesteps))):
             timestep_batch = torch.full((batch_size,), t, device=device, dtype=torch.long)
-            xt = diffusion_process.p_sample(
+            xt = diffusion_process.ddim_sample(
                 model,
                 xt,
                 timestep_batch,
                 y,
                 classifier,
+                eta=0.0,
             )["sample"]
 
     # Convert the image to proper scale
@@ -155,7 +156,7 @@ def run_generate(cfg, steps: int = 1000, guidance: bool = False):
 if __name__ == "__main__":
     cfg = ConfigImageNet()
     # Generate and plot results
-    run_generate(cfg, steps=1000, guidance=False)
+    run_generate(cfg, steps=50, guidance=False)
     # run_generate(250, guidance=False)
     # run_generate(1000, guidance=True)
     # run_generate(250, guidance=True)

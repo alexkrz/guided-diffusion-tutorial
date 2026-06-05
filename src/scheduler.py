@@ -309,6 +309,47 @@ class GuidedDiffusionProcess:
 
         return {"sample": sample, "pred_xstart": out["pred_xstart"]}
 
+    def _predict_eps_from_xstart(self, x_t, t, pred_xstart):
+        """
+        Predict epsilon from x_t and predicted x_start.
+        """
+        sqrt_recip_alphas_cumprod = self._coeff_broadcasting(self.sqrt_recip_alphas_cumprod, t)
+        sqrt_recipm1_alphas_cumprod = self._coeff_broadcasting(self.sqrt_recipm1_alphas_cumprod, t)
+        return (sqrt_recip_alphas_cumprod * x_t - pred_xstart) / sqrt_recipm1_alphas_cumprod
+
+    def ddim_sample(self, model, x, t, y, classifier=None, eta=0.0):
+        """
+        DDIM step: sample x_{t-1} from x_t.
+        eta=0 -> deterministic DDIM, eta>0 -> stochastic DDIM.
+        """
+        out = self.p_mean_variance(model, x.float(), t, y)
+        pred_xstart = out["pred_xstart"]
+
+        eps = self._predict_eps_from_xstart(x, t, pred_xstart)
+        alpha_bar = self._coeff_broadcasting(self.alphas_cumprod, t)
+        alpha_bar_prev = self._coeff_broadcasting(self.alphas_cumprod_prev, t)
+
+        # Optional classifier guidance in score-space (Song et al.)
+        if self.classifier_guidance:
+            gradient = self._calc_gradient(x, self.scale_timestep(t), y, classifier) * self.classifier_scale
+            eps = eps - torch.sqrt(1.0 - alpha_bar) * gradient.float()
+            pred_xstart = (x - torch.sqrt(1.0 - alpha_bar) * eps) / torch.sqrt(alpha_bar)
+            pred_xstart = torch.clamp(pred_xstart, -1.0, 1.0)
+
+        sigma = (
+            eta
+            * torch.sqrt((1.0 - alpha_bar_prev) / (1.0 - alpha_bar))
+            * torch.sqrt(1.0 - (alpha_bar / alpha_bar_prev))
+        )
+
+        noise = torch.randn_like(x)
+        mean_pred = pred_xstart * torch.sqrt(alpha_bar_prev) + torch.sqrt(
+            torch.clamp(1.0 - alpha_bar_prev - sigma**2, min=0.0)
+        ) * eps
+        nonzero_mask = (t != 0).float().view(-1, *([1] * (len(x.shape) - 1)))
+        sample = mean_pred + nonzero_mask * sigma * noise
+        return {"sample": sample, "pred_xstart": pred_xstart}
+
     def _vb_terms_bpd(self, model, x_start, x_t, t, y):
         """
         Get a term for the variational lower-bound.
