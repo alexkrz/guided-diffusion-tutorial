@@ -153,7 +153,7 @@ def run_generate(cfg, steps: int = 1000, guidance: bool = False):
 
 
 if __name__ == "__main__":
-    cfg = ConfigMNIST()
+    cfg = ConfigImageNet()
     # Generate and plot results
     run_generate(cfg, steps=1000, guidance=False)
     # run_generate(250, guidance=False)

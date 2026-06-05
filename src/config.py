@@ -35,8 +35,8 @@ class ConfigImageNet:
     test_csv_path = "data/test.csv"
     model_path = "checkpoints/openai-imagenet-64/64x64_diffusion.pt"
     classifier_path = "checkpoints/openai-imagenet-64/64x64_classifier.pt"
-    model_config_path = "checkpoints/openai-imagenet-64/unet_model.json"
-    classifier_config_path = "checkpoints/openai-imagenet-64/encoder_unet_model.json"
+    model_config_path = "configs/openai-imagenet-64/unet_model.json"
+    classifier_config_path = "configs/openai-imagenet-64/encoder_unet_model.json"
     generated_csv_path = "results/mnist_generated_data.csv"
 
     # Training Hyperparams
