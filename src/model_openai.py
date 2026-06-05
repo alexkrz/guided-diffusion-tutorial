@@ -1,3 +1,5 @@
+# The UNet implementation here is from https://github.com/openai/guided-diffusion/blob/main/guided_diffusion/unet.py
+
 import math
 from abc import abstractmethod
 import json

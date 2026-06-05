@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from src.config import ConfigMNIST
 from src.dataset import CustomMnistDataset
-from src.model_v1 import Unet, UnetClassifier
+from src.model_tutorial import Unet, UnetClassifier
 from src.scheduler import GuidedDiffusionProcess
 
 

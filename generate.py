@@ -6,7 +6,7 @@ import torch
 from tqdm import tqdm
 
 from src.config import ConfigImageNet, ConfigMNIST
-from src.model_v2 import UNetModel, EncoderUNetModel
+from src.model_openai import UNetModel, EncoderUNetModel
 from src.scheduler import GuidedDiffusionProcess
 
 

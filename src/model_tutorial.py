@@ -1,3 +1,5 @@
+# The UNet implementation here is from https://www.kaggle.com/code/vikramsandu/guided-diffusion-by-openai-from-scratch/notebook
+
 import torch
 import torch.nn as nn
 
