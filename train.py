@@ -6,13 +6,13 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from src.config import Config
+from src.config import ConfigMNIST
 from src.dataset import CustomMnistDataset
-from src.model import Unet, UnetClassifier
+from src.model_tutorial import Unet, UnetClassifier
 from src.scheduler import GuidedDiffusionProcess
 
 
-def train_classifier(cfg: Config):
+def train_classifier(cfg: ConfigMNIST):
 
     # Dataset and Dataloader
     mnist_ds = CustomMnistDataset(cfg.train_csv_path)
@@ -92,7 +92,7 @@ def train_classifier(cfg: Config):
         # Save based on train-loss
         if train_loss < best_eval_loss:
             best_eval_loss = train_loss
-            torch.save(model, cfg.classifier_path)
+            torch.save(model.state_dict(), cfg.classifier_path)
 
     print("----------------------------------")
 
@@ -102,7 +102,7 @@ def train_classifier(cfg: Config):
     torch.cuda.empty_cache()
 
 
-def train(cfg: Config):
+def train(cfg: ConfigMNIST):
 
     # Dataset and Dataloader
     mnist_ds = CustomMnistDataset(cfg.train_csv_path)
@@ -177,7 +177,7 @@ def train(cfg: Config):
         # Save based on train-loss
         if mean_total_loss < best_eval_loss:
             best_eval_loss = mean_total_loss
-            torch.save(model, cfg.model_path)
+            torch.save(model.state_dict(), cfg.model_path)
 
     print("--------------------------------------------")
 
@@ -189,7 +189,7 @@ def train(cfg: Config):
 
 if __name__ == "__main__":
     # Load config
-    cfg = Config()
+    cfg = ConfigMNIST()
 
     # Train the classifier
     print("Training the classifier:")

@@ -38,3 +38,5 @@ Generated images will be stored in the `results/` directory.
 ## Todos
 
 - [ ] Reproduce results from Karras et al., 2022, p. 14
+- [x] Load the ImageNet classifier
+- [ ] Investigate DDIM to make image sampling faster
